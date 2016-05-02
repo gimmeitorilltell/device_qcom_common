@@ -52,59 +52,10 @@
 
 static int display_hint_sent;
 static int video_encode_hint_sent;
-static int current_power_profile = PROFILE_BALANCED;
 
 static void process_video_encode_hint(void *metadata);
 
 extern void interaction(int duration, int num_args, int opt_list[]);
-
-static int profile_high_performance_8952[11] = {
-    SCHED_BOOST_ON,
-    0x704, 0x4d04, /* Enable all CPUs */
-    CPU0_MIN_FREQ_TURBO_MAX, CPU1_MIN_FREQ_TURBO_MAX,
-    CPU2_MIN_FREQ_TURBO_MAX, CPU3_MIN_FREQ_TURBO_MAX,
-    CPU4_MIN_FREQ_TURBO_MAX, CPU5_MIN_FREQ_TURBO_MAX,
-    CPU6_MIN_FREQ_TURBO_MAX, CPU7_MIN_FREQ_TURBO_MAX,
-};
-
-static int profile_power_save_8952[5] = {
-    0x8fe, 0x3dfd, /* 1 big core, 2 little cores*/
-    CPUS_ONLINE_MAX_LIMIT_2,
-    CPU0_MAX_FREQ_NONTURBO_MAX, CPU1_MAX_FREQ_NONTURBO_MAX,
-    CPU2_MAX_FREQ_NONTURBO_MAX, CPU3_MAX_FREQ_NONTURBO_MAX,
-};
-
-int get_number_of_profiles() {
-    return 3;
-}
-
-static void set_power_profile(int profile) {
-
-    if (profile == current_power_profile)
-        return;
-
-    ALOGV("%s: profile=%d", __func__, profile);
-
-    if (current_power_profile != PROFILE_BALANCED) {
-        undo_hint_action(DEFAULT_PROFILE_HINT_ID);
-        ALOGV("%s: hint undone", __func__);
-    }
-
-    if (profile == PROFILE_HIGH_PERFORMANCE) {
-        int *resource_values = profile_high_performance_8952;
-        perform_hint_action(DEFAULT_PROFILE_HINT_ID, resource_values,
-                ARRAY_SIZE(resource_values));
-        ALOGD("%s: set performance mode", __func__);
-
-    } else if (profile == PROFILE_POWER_SAVE) {
-        int *resource_values = profile_power_save_8952;
-        perform_hint_action(DEFAULT_PROFILE_HINT_ID, resource_values,
-                ARRAY_SIZE(resource_values));
-        ALOGD("%s: set powersave", __func__);
-    }
-
-    current_power_profile = profile;
-}
 
 int  power_hint_override(struct power_module *module, power_hint_t hint,
         void *data)
@@ -133,16 +84,6 @@ int  power_hint_override(struct power_module *module, power_hint_t hint,
         0x3d01,
         0x101,
     };
-
-    if (hint == POWER_HINT_SET_PROFILE) {
-        set_power_profile(*(int32_t *)data);
-        return HINT_HANDLED;
-    }
-
-    // Skip other hints in custom power modes
-    if (current_power_profile != PROFILE_BALANCED) {
-        return HINT_HANDLED;
-    }
 
     switch (hint) {
         case POWER_HINT_INTERACTION:

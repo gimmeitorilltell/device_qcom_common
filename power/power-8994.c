@@ -49,49 +49,7 @@
 
 static int display_hint_sent;
 
-enum {
-    PROFILE_POWER_SAVE,
-    PROFILE_BALANCED,
-    PROFILE_HIGH_PERFORMANCE
-};
-
-static int current_power_profile = PROFILE_BALANCED;
 static int low_power_mode = 0;
-
-static void set_power_profile(int profile) {
-
-    if (profile == current_power_profile)
-        return;
-
-    ALOGV("%s: profile=%d", __func__, profile);
-
-    if (current_power_profile != PROFILE_BALANCED) {
-        undo_hint_action(DEFAULT_PROFILE_HINT_ID);
-        ALOGV("%s: hint undone", __func__);
-    }
-
-    if (profile == PROFILE_POWER_SAVE) {
-        int resource_values[] = { CPUS_ONLINE_MAX_LIMIT_2,
-            CPU0_MAX_FREQ_NONTURBO_MAX - 2, CPU1_MAX_FREQ_NONTURBO_MAX - 2,
-            CPU2_MAX_FREQ_NONTURBO_MAX - 2, CPU3_MAX_FREQ_NONTURBO_MAX - 2,
-            CPU4_MAX_FREQ_NONTURBO_MAX - 2, CPU5_MAX_FREQ_NONTURBO_MAX - 2,
-            CPU6_MAX_FREQ_NONTURBO_MAX - 2, CPU7_MAX_FREQ_NONTURBO_MAX - 2 };
-        perform_hint_action(DEFAULT_PROFILE_HINT_ID,
-            resource_values, sizeof(resource_values)/sizeof(resource_values[0]));
-        ALOGD("%s: set powersave", __func__);
-    } else if (profile == PROFILE_HIGH_PERFORMANCE) {
-        int resource_values[] = { SCHED_BOOST_ON, CPUS_ONLINE_MAX, 0x0901, 0x101,
-            CPU0_MIN_FREQ_TURBO_MAX, CPU1_MIN_FREQ_TURBO_MAX,
-            CPU2_MIN_FREQ_TURBO_MAX, CPU3_MIN_FREQ_TURBO_MAX,
-            CPU4_MIN_FREQ_TURBO_MAX, CPU5_MIN_FREQ_TURBO_MAX,
-            CPU6_MIN_FREQ_TURBO_MAX, CPU7_MIN_FREQ_TURBO_MAX };
-        perform_hint_action(DEFAULT_PROFILE_HINT_ID,
-            resource_values, sizeof(resource_values)/sizeof(resource_values[0]));
-        ALOGD("%s: set performance mode", __func__);
-    }
-
-    current_power_profile = profile;
-}
 
 extern void interaction(int duration, int num_args, int opt_list[]);
 
@@ -155,24 +113,14 @@ static int process_video_encode_hint(void *metadata)
 int power_hint_override(__attribute__((unused)) struct power_module *module,
         power_hint_t hint, void *data)
 {
-    if (hint == POWER_HINT_SET_PROFILE && !low_power_mode) {
-        set_power_profile((intptr_t)data);
+    if (!low_power_mode) {
         return HINT_HANDLED;
     }
 
     if (hint == POWER_HINT_LOW_POWER) {
         if (low_power_mode) {
-            set_power_profile(PROFILE_BALANCED);
             low_power_mode = 0;
-        } else {
-            set_power_profile(PROFILE_POWER_SAVE);
-            low_power_mode = 1;
         }
-        return HINT_HANDLED;
-    }
-
-    // Skip other hints in custom power modes
-    if (current_power_profile != PROFILE_BALANCED) {
         return HINT_HANDLED;
     }
 
