@@ -50,9 +50,6 @@ char scaling_gov_path[4][80] ={
 };
 
 static void *qcopt_handle;
-static int (*perf_lock_acq)(unsigned long handle, int duration,
-    int list[], int numArgs);
-static int (*perf_lock_rel)(unsigned long handle);
 static struct list_node active_hint_list_head;
 
 static void *get_qcopt_handle()
@@ -81,21 +78,6 @@ static void __attribute__ ((constructor)) initialize(void)
     if (!qcopt_handle) {
         ALOGE("Failed to get qcopt handle.\n");
     } else {
-        /*
-         * qc-opt handle obtained. Get the perflock acquire/release
-         * function pointers.
-         */
-        perf_lock_acq = dlsym(qcopt_handle, "perf_lock_acq");
-
-        if (!perf_lock_acq) {
-            ALOGE("Unable to get perf_lock_acq function handle.\n");
-        }
-
-        perf_lock_rel = dlsym(qcopt_handle, "perf_lock_rel");
-
-        if (!perf_lock_rel) {
-            ALOGE("Unable to get perf_lock_rel function handle.\n");
-        }
 
     }
 }
@@ -205,92 +187,18 @@ void interaction(int duration, int num_args, int opt_list[])
         return;
 
     if (qcopt_handle) {
-        if (perf_lock_acq) {
-            lock_handle = perf_lock_acq(lock_handle, duration, opt_list, num_args);
-            if (lock_handle == -1)
-                ALOGE("Failed to acquire lock.");
-        }
     }
 }
 
 void perform_hint_action(int hint_id, int resource_values[], int num_resources)
 {
     if (qcopt_handle) {
-        if (perf_lock_acq) {
-            /* Acquire an indefinite lock for the requested resources. */
-            int lock_handle = perf_lock_acq(0, 0, resource_values,
-                    num_resources);
-
-            if (lock_handle == -1) {
-                ALOGE("Failed to acquire lock.");
-            } else {
-                /* Add this handle to our internal hint-list. */
-                struct hint_data *new_hint =
-                    (struct hint_data *)malloc(sizeof(struct hint_data));
-
-                if (new_hint) {
-                    if (!active_hint_list_head.compare) {
-                        active_hint_list_head.compare =
-                            (int (*)(void *, void *))hint_compare;
-                        active_hint_list_head.dump = (void (*)(void *))hint_dump;
-                    }
-
-                    new_hint->hint_id = hint_id;
-                    new_hint->perflock_handle = lock_handle;
-
-                    if (add_list_node(&active_hint_list_head, new_hint) == NULL) {
-                        free(new_hint);
-                        /* Can't keep track of this lock. Release it. */
-                        if (perf_lock_rel)
-                            perf_lock_rel(lock_handle);
-
-                        ALOGE("Failed to process hint.");
-                    }
-                } else {
-                    /* Can't keep track of this lock. Release it. */
-                    if (perf_lock_rel)
-                        perf_lock_rel(lock_handle);
-
-                    ALOGE("Failed to process hint.");
-                }
-            }
-        }
     }
 }
 
 void undo_hint_action(int hint_id)
 {
     if (qcopt_handle) {
-        if (perf_lock_rel) {
-            /* Get hint-data associated with this hint-id */
-            struct list_node *found_node;
-            struct hint_data temp_hint_data = {
-                .hint_id = hint_id
-            };
-
-            found_node = find_node(&active_hint_list_head,
-                    &temp_hint_data);
-
-            if (found_node) {
-                /* Release this lock. */
-                struct hint_data *found_hint_data =
-                    (struct hint_data *)(found_node->data);
-
-                if (found_hint_data) {
-                    if (perf_lock_rel(found_hint_data->perflock_handle) == -1)
-                        ALOGE("Perflock release failed.");
-                }
-
-                if (found_node->data) {
-                    /* We can free the hint-data for this node. */
-                    free(found_node->data);
-                }
-
-                remove_list_node(&active_hint_list_head, found_node);
-            } else {
-                ALOGE("Invalid hint ID.");
-            }
-        }
     }
 }
 
@@ -301,8 +209,5 @@ void undo_hint_action(int hint_id)
 void undo_initial_hint_action()
 {
     if (qcopt_handle) {
-        if (perf_lock_rel) {
-            perf_lock_rel(1);
-        }
     }
 }
