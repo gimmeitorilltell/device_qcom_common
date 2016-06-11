@@ -53,73 +53,11 @@ static int display_hint2_sent;
 static int first_display_off_hint;
 extern int display_boost;
 
-static int current_power_profile = PROFILE_BALANCED;
-
-int get_number_of_profiles() {
-    return 5;
-}
-
-static void set_power_profile(int profile) {
-
-    if (profile == current_power_profile)
-        return;
-
-    ALOGV("%s: profile=%d", __func__, profile);
-
-    if (current_power_profile != PROFILE_BALANCED) {
-        undo_hint_action(DEFAULT_PROFILE_HINT_ID);
-        ALOGV("%s: hint undone", __func__);
-    }
-
-    if (profile == PROFILE_HIGH_PERFORMANCE) {
-        int resource_values[] = { CPUS_ONLINE_MIN_4, 0x0901,
-            CPU0_MIN_FREQ_TURBO_MAX, CPU1_MIN_FREQ_TURBO_MAX,
-            CPU2_MIN_FREQ_TURBO_MAX, CPU3_MIN_FREQ_TURBO_MAX };
-        perform_hint_action(DEFAULT_PROFILE_HINT_ID,
-            resource_values, sizeof(resource_values)/sizeof(resource_values[0]));
-        ALOGD("%s: set performance mode", __func__);
-    } else if (profile == PROFILE_BIAS_PERFORMANCE) {
-        int resource_values[] = {
-            CPU0_MIN_FREQ_NONTURBO_MAX + 1, CPU1_MIN_FREQ_NONTURBO_MAX + 1,
-            CPU2_MIN_FREQ_NONTURBO_MAX + 1, CPU2_MIN_FREQ_NONTURBO_MAX + 1 };
-        perform_hint_action(DEFAULT_PROFILE_HINT_ID,
-            resource_values, sizeof(resource_values)/sizeof(resource_values[0]));
-        ALOGD("%s: set bias perf mode", __func__);
-    } else if (profile == PROFILE_BIAS_POWER) {
-        int resource_values[] = { 0x0A03,
-            CPU0_MAX_FREQ_NONTURBO_MAX, CPU1_MAX_FREQ_NONTURBO_MAX,
-            CPU1_MAX_FREQ_NONTURBO_MAX, CPU2_MAX_FREQ_NONTURBO_MAX };
-        perform_hint_action(DEFAULT_PROFILE_HINT_ID,
-            resource_values, sizeof(resource_values)/sizeof(resource_values[0]));
-        ALOGD("%s: set bias power mode", __func__);
-    } else if (profile == PROFILE_POWER_SAVE) {
-        int resource_values[] = { 0x0A03, CPUS_ONLINE_MAX_LIMIT_2,
-            CPU0_MAX_FREQ_NONTURBO_MAX, CPU1_MAX_FREQ_NONTURBO_MAX,
-            CPU2_MAX_FREQ_NONTURBO_MAX, CPU3_MAX_FREQ_NONTURBO_MAX };
-        perform_hint_action(DEFAULT_PROFILE_HINT_ID,
-            resource_values, sizeof(resource_values)/sizeof(resource_values[0]));
-        ALOGD("%s: set powersave", __func__);
-    }
-
-    current_power_profile = profile;
-}
-
 extern void interaction(int duration, int num_args, int opt_list[]);
 
 int power_hint_override(__attribute__((unused)) struct power_module *module,
         power_hint_t hint, void *data)
 {
-    if (hint == POWER_HINT_SET_PROFILE) {
-        set_power_profile(*(int32_t *)data);
-        return HINT_HANDLED;
-    }
-
-    // Skip other hints in high/low power modes
-    if (current_power_profile == PROFILE_POWER_SAVE ||
-            current_power_profile == PROFILE_HIGH_PERFORMANCE) {
-        return HINT_HANDLED;
-    }
-
     if (hint == POWER_HINT_LAUNCH_BOOST) {
         int duration = 2000;
         int resources[] = { CPUS_ONLINE_MIN_3,

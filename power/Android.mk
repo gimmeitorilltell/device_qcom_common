@@ -5,7 +5,7 @@ ifeq ($(TARGET_POWERHAL_VARIANT),qcom)
 USE_ME := true
 endif
 
-ifneq (,$(filter true,$(USE_ME) $(WITH_QC_PERF)))
+ifneq (,$(filter true,$(USE_ME)))
 
 # HAL module implemenation stored in
 # hw/<POWERS_HARDWARE_MODULE_ID>.<ro.hardware>.so
@@ -90,4 +90,4 @@ endif
 LOCAL_MODULE_TAGS := optional
 include $(BUILD_SHARED_LIBRARY)
 
-endif # TARGET_POWERHAL_VARIANT == qcom || WITH_QC_PERF
+endif # TARGET_POWERHAL_VARIANT == qcom

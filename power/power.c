@@ -220,7 +220,6 @@ static void power_hint(__attribute__((unused)) struct power_module *module, powe
         case POWER_HINT_CPU_BOOST:
         case POWER_HINT_LAUNCH_BOOST:
         case POWER_HINT_AUDIO:
-        case POWER_HINT_SET_PROFILE:
         case POWER_HINT_LOW_POWER:
         break;
         case POWER_HINT_VIDEO_ENCODE:
@@ -242,11 +241,6 @@ int __attribute__ ((weak)) set_interactive_override(
         __attribute__((unused)) int on)
 {
     return HINT_NONE;
-}
-
-int __attribute__ ((weak)) get_number_of_profiles()
-{
-    return 0;
 }
 
 #ifdef SET_INTERACTIVE_EXT
@@ -481,9 +475,6 @@ void set_feature(struct power_module *module, feature_t feature, int state)
 
 int get_feature(struct power_module *module __unused, feature_t feature)
 {
-    if (feature == POWER_FEATURE_SUPPORTED_PROFILES) {
-        return get_number_of_profiles();
-    }
     return -1;
 }
 
@@ -494,7 +485,7 @@ struct power_module HAL_MODULE_INFO_SYM = {
         .hal_api_version = HARDWARE_HAL_API_VERSION,
         .id = POWER_HARDWARE_MODULE_ID,
         .name = "QCOM Power HAL",
-        .author = "Qualcomm/CyanogenMod",
+        .author = "Qualcomm/Turbo ROM",
         .methods = &power_module_methods,
     },
 
